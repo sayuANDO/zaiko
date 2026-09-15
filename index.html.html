@@ -641,17 +641,17 @@ video{width:100%;max-height:240px;object-fit:cover;display:block;background:tran
 
 <script>
 // ─── データ ───
-const KEY='inv4';
-let db=(()=>{try{return JSON.parse(localStorage.getItem(KEY))||{p:{},logs:[]};}catch(e){return{p:{},logs:[]}}})();
-const save=()=>localStorage.setItem(KEY,JSON.stringify(db));
+var KEY='inv4';
+var db=(function(){try{return JSON.parse(localStorage.getItem(KEY))||{p:{},logs:[]};}catch(e){return{p:{},logs:[]};}}());
+function save(){localStorage.setItem(KEY,JSON.stringify(db));}
 
 // ─── 担当者・PIN管理 ───
-let operator = localStorage.getItem('inv_op') || '';
-const DEFAULT_PIN = '1234';
-let adminLoggedIn = false;
-let pinBuffer = '';
-let pinMode = ''; // 'login' | 'change' | 'change2'
-let pinNewTemp = '';
+var operator = localStorage.getItem('inv_op') || '';
+var DEFAULT_PIN = '1234';
+var adminLoggedIn = false;
+var pinBuffer = '';
+var pinMode = ''; // 'login' | 'change' | 'change2'
+var pinNewTemp = '';
 
 // 担当者リスト取得
 function getStaffList(){ try{ return JSON.parse(localStorage.getItem('inv_staff'))||[]; }catch(e){ return []; } }
@@ -660,14 +660,14 @@ function getPin(){ return localStorage.getItem('inv_pin') || DEFAULT_PIN; }
 
 // モーダルを開く
 function openModal(){
-  const list = getStaffList();
-  const sel = document.getElementById('modalSelect');
+  var list = getStaffList();
+  var sel = document.getElementById('modalSelect');
   sel.innerHTML = '<option value="">-- 選択してください --</option>' +
     list.map(function(n){ return '<option value="' + n + '"' + (n===operator?' selected':'') + '>' + n + '</option>'; }).join('');
   document.getElementById('modalBg').classList.add('on');
 }
 function saveOperator(){
-  const n = document.getElementById('modalSelect').value;
+  var n = document.getElementById('modalSelect').value;
   if(!n){ toast('担当者を選択してください','ng'); return; }
   operator = n;
   localStorage.setItem('inv_op', n);
@@ -686,8 +686,8 @@ function openPinModal(mode){
   pinBuffer = '';
   pinNewTemp = '';
   document.getElementById('pinErr').textContent = '';
-  const title = document.getElementById('pinModalTitle');
-  const desc  = document.getElementById('pinModalDesc');
+  var title = document.getElementById('pinModalTitle');
+  var desc  = document.getElementById('pinModalDesc');
   if(mode === 'login'){
     title.textContent = '🔐 管理者PIN';
     desc.textContent  = '4桁のPIN番号を入力してください';
@@ -706,10 +706,10 @@ function pinKey(k){
   if(pinBuffer.length >= 4) return;
   pinBuffer += k;
   updatePinDots();
-  if(pinBuffer.length === 4) setTimeout(()=>confirmPin(), 150);
+  if(pinBuffer.length === 4) setTimeout(function(){confirmPin();}, 150);
 }
 function updatePinDots(){
-  for(let i=0;i<4;i++){
+  for(var i=0;i<4;i++){
     document.getElementById('pd'+i).classList.toggle('filled', i < pinBuffer.length);
   }
 }
@@ -751,7 +751,7 @@ function showAdminView(){
   document.getElementById('adminLockView').style.display = 'none';
   document.getElementById('adminView').style.display = 'block';
   // 端末情報
-  const ua = navigator.userAgent;
+  var ua = navigator.userAgent;
   var deviceParts = [
     '📱 端末: ' + (/iPhone/.test(ua)?'iPhone':/iPad/.test(ua)?'iPad':/Android/.test(ua)?'Android':'PC/その他'),
     '🌐 ブラウザ: ' + (/CriOS/.test(ua)?'Chrome(iOS)':/FxiOS/.test(ua)?'Firefox(iOS)':(/Safari/.test(ua)&&/Apple/.test(navigator.vendor)?'Safari':'その他')),
@@ -772,8 +772,8 @@ function adminLogout(){
 
 // 担当者管理
 function renderStaffList(){
-  const list = getStaffList();
-  const el = document.getElementById('staffList');
+  var list = getStaffList();
+  var el = document.getElementById('staffList');
   if(!list.length){
     el.innerHTML = '<div style="font-size:14px;color:var(--text2);padding:8px 0">担当者が登録されていません</div>';
     return;
@@ -781,9 +781,9 @@ function renderStaffList(){
   el.innerHTML = list.map(function(n,i){ return '<div class="staff-item"><span class="staff-name">👤 ' + n + '</span><button class="staff-del" onclick="delStaff(' + i + ')">削除</button></div>'; }).join('');
 }
 function addStaff(){
-  const n = document.getElementById('staffInput').value.trim();
+  var n = document.getElementById('staffInput').value.trim();
   if(!n){ toast('担当者名を入力してください','ng'); return; }
-  const list = getStaffList();
+  var list = getStaffList();
   if(list.includes(n)){ toast('同じ名前がすでに登録されています','ng'); return; }
   list.push(n);
   saveStaffList(list);
@@ -792,8 +792,8 @@ function addStaff(){
   toast(('「' + n + '」を追加しました'),'ok');
 }
 function delStaff(i){
-  const list = getStaffList();
-  const name = list[i];
+  var list = getStaffList();
+  var name = list[i];
   if(!confirm(('「' + name + '」を削除しますか？'))) return;
   list.splice(i,1);
   saveStaffList(list);
@@ -803,15 +803,15 @@ function delStaff(i){
 }
 
 // ─── チュートリアル ───
-const TUT=[
+var TUT=[
   {icon:'📷',title:'バーコードをスキャン',desc:'カメラで商品のバーコードを読み取るか、番号を直接入力してください。'},
   {icon:'⬇️⬆️',title:'入庫・出庫をタップ',desc:'数量を確認して操作ボタンをタップ。確認画面で内容をチェックしてから確定してください。'},
   {icon:'↩️',title:'間違えても大丈夫',desc:'操作後30秒以内なら「取り消し」ボタンで元に戻せます。'}
 ];
-let tutIdx=0;
+var tutIdx=0;
 function showTut(){if(localStorage.getItem('inv_tut')){return}document.getElementById('tutBox').style.display='block';renderTut()}
 function renderTut(){
-  const t=TUT[tutIdx];
+  var t=TUT[tutIdx];
   document.getElementById('tutStep').textContent=('STEP ' + (tutIdx+1) + ' / ' + TUT.length);
   document.getElementById('tutIcon').textContent=t.icon;
   document.getElementById('tutTitle').textContent=t.title;
@@ -824,20 +824,20 @@ function skipTut(){localStorage.setItem('inv_tut','1');document.getElementById('
 
 // ─── 期限バナー ───
 function checkExpBanner(){
-  const today=new Date();today.setHours(0,0,0,0);
-  const items=Object.values(db.p).filter(p=>p.expiry);
-  const over=items.filter(p=>new Date(p.expiry)<today).length;
-  const near=items.filter(p=>{const d=new Date(p.expiry);return d>=today&&Math.ceil((d-today)/864e5)<=7}).length;
-  const banner=document.getElementById('expBanner');
+  var today=new Date();today.setHours(0,0,0,0);
+  var items=Object.values(db.p).filter(function(p){return p.expiry;});
+  var over=items.filter(function(p){return new Date(p.expiry)<today;}).length;
+  var near=items.filter(function(p){return {var d=new Date(p.expiry);return d>=today&&Math.ceil((d-today)/864e5)<=7}).length;
+  var banner=document.getElementById('expBanner');
   if(over+near>0){
     banner.style.display='flex';
-    const msgs=[];if(over>0)msgs.push(('期限切れ ' + over + '品'));if(near>0)msgs.push(('期限間近 ' + near + '品'));
+    var msgs=[];if(over>0)msgs.push(('期限切れ ' + over + '品'));if(near>0)msgs.push(('期限間近 ' + near + '品'));
     document.getElementById('expBannerSub').textContent=msgs.join('　');
   }else{banner.style.display='none'}
 }
 
 // ─── タブ ───
-const TABS=['scan','stock','log','add','share','report','admin'];
+var TABS=['scan','stock','log','add','share','report','admin'];
 function go(t){
   TABS.forEach(function(id,i){
     document.getElementById('sec-'+id).classList.toggle('on',id===t);
@@ -939,14 +939,14 @@ function renderDashBody(){
 }
 
 // ─── カメラ ───
-let scanning=false,reader=null;
+var scanning=false,reader=null;
 function toggleCam(){scanning?stopCam():startCam()}
 async function startCam(){
   if(!operator){openModal();return}
   scanning=true;document.getElementById('vf').classList.add('on');
-  const b=document.getElementById('camBtn');b.textContent='■ 停止';b.classList.add('stop');
+  var b=document.getElementById('camBtn');b.textContent='■ 停止';b.classList.add('stop');
   try{
-    const hints=new Map();
+    var hints=new Map();
     hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[
       ZXing.BarcodeFormat.EAN_13,
       ZXing.BarcodeFormat.EAN_8,
@@ -958,7 +958,7 @@ async function startCam(){
     ]);
     hints.set(ZXing.DecodeHintType.TRY_HARDER, false);
     reader=new ZXing.BrowserMultiFormatReader(hints, 200);
-    await reader.decodeFromVideoDevice(null,'video',(r,e)=>{
+    await reader.decodeFromVideoDevice(null,'video',function(r,e){
       if(r){stopCam();gotBC(r.getText())}
     });
   }
@@ -966,16 +966,16 @@ async function startCam(){
 }
 function stopCam(){
   scanning=false;document.getElementById('vf').classList.remove('on');
-  const b=document.getElementById('camBtn');b.textContent='▶ カメラ起動';b.classList.remove('stop');
+  var b=document.getElementById('camBtn');b.textContent='▶ カメラ起動';b.classList.remove('stop');
   if(reader){try{reader.reset()}catch(e){}reader=null}
 }
-let addScan=false,addReader=null;
+var addScan=false,addReader=null;
 function toggleAddCam(){addScan?stopAddCam():startAddCam()}
 async function startAddCam(){
   addScan=true;document.getElementById('addVf').classList.add('on');
-  const b=document.getElementById('addCamBtn');b.textContent='■ 停止';b.classList.add('stop');
+  var b=document.getElementById('addCamBtn');b.textContent='■ 停止';b.classList.add('stop');
   try{
-    const hints=new Map();
+    var hints=new Map();
     hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[
       ZXing.BarcodeFormat.EAN_13,
       ZXing.BarcodeFormat.EAN_8,
@@ -987,7 +987,7 @@ async function startAddCam(){
     ]);
     hints.set(ZXing.DecodeHintType.TRY_HARDER, false);
     addReader=new ZXing.BrowserMultiFormatReader(hints, 200);
-    await addReader.decodeFromVideoDevice(null,'addVideo',(r,e)=>{
+    await addReader.decodeFromVideoDevice(null,'addVideo',function(r,e){
       if(r){document.getElementById('fBarcode').value=r.getText();stopAddCam();toast('読み取り完了','ok')}
     });
   }
@@ -995,7 +995,7 @@ async function startAddCam(){
 }
 function stopAddCam(){
   addScan=false;document.getElementById('addVf').classList.remove('on');
-  const b=document.getElementById('addCamBtn');b.textContent='▶ カメラ';b.classList.remove('stop');
+  var b=document.getElementById('addCamBtn');b.textContent='▶ カメラ';b.classList.remove('stop');
   if(addReader){try{addReader.reset()}catch(e){}addReader=null}
 }
 
@@ -1003,45 +1003,45 @@ function stopAddCam(){
 function gotBC(code){document.getElementById('bcInput').value=code;lookup(code)}
 function lookup(code){
   if(!operator){openModal();return}
-  const bc=code||document.getElementById('bcInput').value.trim();
+  var bc=code||document.getElementById('bcInput').value.trim();
   if(!bc){toast('バーコードを入力してください','ng');return}
-  const p=db.p[bc];
+  var p=db.p[bc];
   if(!p){beep('ng');toast('未登録です → 登録タブで追加してください','ng');document.getElementById('fBarcode').value=bc;return}
   beep('ok');showProduct(bc,p);
 }
-let curBC=null;
+var curBC=null;
 function showProduct(bc,p){
   curBC=bc;
   document.getElementById('scanEmpty').style.display='none';
   document.getElementById('productCard').classList.add('on');
   document.getElementById('pName').textContent=p.name;
   document.getElementById('pCode').textContent=bc;
-  const s=document.getElementById('pStock');s.textContent=p.stock;s.className='snum'+(p.min&&p.stock<=p.min?' low':'');
+  var s=document.getElementById('pStock');s.textContent=p.stock;s.className='snum'+(p.min&&p.stock<=p.min?' low':'');
   document.getElementById('pUnit').textContent=p.unit||'個';
   document.getElementById('qVal').value=1;
   document.getElementById('expInput').value=p.expiry||'';
-  const expEl=document.getElementById('pExpBadge');
-  if(p.expiry){const{label,cls}=expStatus(p.expiry);expEl.innerHTML=('<span class="badge ' + cls + '">' + label + '</span>')}
+  var expEl=document.getElementById('pExpBadge');
+  if(p.expiry){var{label,cls}=expStatus(p.expiry);expEl.innerHTML=('<span class="badge ' + cls + '">' + label + '</span>')}
   else expEl.innerHTML='<span style="font-size:12px;color:var(--text2)">賞味期限未設定</span>';
   closeUndo();closeTana();
 }
 function expStatus(expiry){
-  const today=new Date();today.setHours(0,0,0,0);
-  const diff=Math.ceil((new Date(expiry)-today)/864e5);
+  var today=new Date();today.setHours(0,0,0,0);
+  var diff=Math.ceil((new Date(expiry)-today)/864e5);
   if(diff<0)return{label:('期限切れ（' + Math.abs(diff) + '日超過）'),cls:'badge-over'};
   if(diff<=7)return{label:('期限間近（残' + diff + '日）'),cls:'badge-near'};
   return{label:('期限OK（残' + diff + '日）'),cls:'badge-ok'};
 }
 
 // ─── 数量 ───
-function adj(d){const e=document.getElementById('qVal');e.value=Math.max(1,Math.min(9999,(parseInt(e.value)||0)+d))}
+function adj(d){var e=document.getElementById('qVal');e.value=Math.max(1,Math.min(9999,(parseInt(e.value)||0)+d))}
 
 // ─── 確認ダイアログ ───
-let pendingAction=null;
+var pendingAction=null;
 function askConfirm(type){
   if(!curBC)return;if(!operator){openModal();return}
-  const p=db.p[curBC];const qty=parseInt(document.getElementById('qVal').value)||1;
-  let title,detail,cls;
+  var p=db.p[curBC];var qty=parseInt(document.getElementById('qVal').value)||1;
+  var title,detail,cls;
   if(type==='nyuko'){
     title='入庫の確認';detail=p.name+'\n\n'+qty+p.unit+' を入庫します';cls='cy-nyuko';
   }else if(type==='shukko'){
@@ -1050,9 +1050,9 @@ function askConfirm(type){
   }else if(type==='henkyaku'){
     title='↩️ 倉庫へ返却の確認';detail=p.name+'\n\n'+qty+p.unit+' を倉庫へ返却します\n倉庫在庫: '+(p.stock+qty)+p.unit;cls='cy-ret';
   }else{
-    const real=parseInt(document.getElementById('tanaIn').value);
+    var real=parseInt(document.getElementById('tanaIn').value);
     if(isNaN(real)||real<0){toast('数量を入力してください','ng');return}
-    const diff=real-p.stock;
+    var diff=real-p.stock;
     title='棚卸しの確認';detail=p.name+'\n\nシステム: '+p.stock+p.unit+' → 実在庫: '+real+p.unit+'\n差異: '+(diff>=0?'+':'')+diff;cls='cy-tana';
   }
   if((type==='nyuko'||type==='shukko')&&qty>=10){title='⚠ '+title;detail='数量 '+qty+p.unit+' は多めです。\n間違いありませんか？\n\n'+detail}
@@ -1061,17 +1061,17 @@ function askConfirm(type){
   document.getElementById('confirmYes').className='confirm-yes '+cls;
   pendingAction={type,qty};
   document.getElementById('confirmOverlay').classList.add('on');
-  document.getElementById('confirmYes').onclick=()=>{closeConfirm();execAction(type)};
+  document.getElementById('confirmYes').onclick=function(){closeConfirm();execAction(type);};
 }
 function closeConfirm(){document.getElementById('confirmOverlay').classList.remove('on')}
 
 // ─── 実行 ───
-let undoSnap=null,undoTimer=null,undoSec=600;
+var undoSnap=null,undoTimer=null,undoSec=600;
 function execAction(type){
   if(!curBC)return;
-  const p=db.p[curBC];const qty=parseInt(document.getElementById('qVal').value)||1;
+  var p=db.p[curBC];var qty=parseInt(document.getElementById('qVal').value)||1;
   undoSnap={bc:curBC,stock:p.stock,expiry:p.expiry,logLen:db.logs.length};
-  const exp=document.getElementById('expInput').value;
+  var exp=document.getElementById('expInput').value;
   if(type==='nyuko'){
     p.stock+=qty;if(exp)p.expiry=exp;p.updated=now();
     addLog(curBC,p.name,'入庫',qty,p.stock,p.unit,p.expiry||'');
@@ -1085,7 +1085,7 @@ function execAction(type){
     addLog(curBC,p.name,'倉庫へ返却',qty,p.stock,p.unit,p.expiry||'');
     save();showProduct(curBC,p);beep('ok');toast(('✓ 倉庫へ返却 +' + qty + p.unit + ' → 倉庫在庫' + p.stock),'ok');
   }else{
-    const real=parseInt(document.getElementById('tanaIn').value);const diff=real-p.stock;
+    var real=parseInt(document.getElementById('tanaIn').value);var diff=real-p.stock;
     if(exp)p.expiry=exp;p.stock=real;p.updated=now();
     addLog(curBC,p.name,'棚卸し',diff,real,p.unit,p.expiry||'');
     save();showProduct(curBC,p);closeTana();beep('ok');toast(('✓ 棚卸し → ' + real + p.unit + '（差異: ' + (diff>=0?'+':'') + diff + '）'),'ok');
@@ -1097,13 +1097,13 @@ function execAction(type){
 function startUndoTimer(){
   undoSec=600;document.getElementById('undoBar').classList.add('on');updUndo();
   clearInterval(undoTimer);
-  undoTimer=setInterval(()=>{undoSec--;updUndo();if(undoSec<=0)closeUndo()},1000);
+  undoTimer=setInterval(function(){undoSec--;updUndo();if(undoSec<=0)closeUndo();},1000);
 }
 function updUndo(){document.getElementById('undoTimer').textContent=('あと' + Math.floor(undoSec/60) + '分' + (undoSec%60) + '秒以内')}
 function closeUndo(){clearInterval(undoTimer);undoTimer=null;document.getElementById('undoBar').classList.remove('on');undoSnap=null}
 function doUndo(){
   if(!undoSnap)return;
-  const p=db.p[undoSnap.bc];p.stock=undoSnap.stock;p.expiry=undoSnap.expiry;p.updated=now();
+  var p=db.p[undoSnap.bc];p.stock=undoSnap.stock;p.expiry=undoSnap.expiry;p.updated=now();
   db.logs=db.logs.slice(0,undoSnap.logLen);
   addLog(undoSnap.bc,p.name,'取消',0,p.stock,p.unit,'');
   save();closeUndo();showProduct(undoSnap.bc,p);beep('ng');toast('操作を取り消しました','ok');
@@ -1115,14 +1115,15 @@ function closeTana(){document.getElementById('tanaPanel').classList.remove('on')
 
 // ─── 在庫一覧 ───
 function renderStock(){
-  const el=document.getElementById('stockList'),items=Object.entries(db.p);
+  var el=document.getElementById('stockList'),items=Object.entries(db.p);
   if(!items.length){el.innerHTML='<div class="empty"><div class="empty-icon">📦</div><div class="empty-text">商品を登録してください</div></div>';return}
-  items.sort((a,b)=>(a[1].expiry||'9999').localeCompare(b[1].expiry||'9999'));
-  el.innerHTML=items.map(([bc,p])=>{
-    const low=p.min&&p.stock<=p.min;
-    const expHtml=p.expiry?(()=>{const{label,cls}=expStatus(p.expiry);return '<div class="li-exp"><span class="badge '+cls+'">'+label+'</span></div>'})():'';
-    const isOver=p.expiry&&new Date(p.expiry)<new Date();
-    const isNear=p.expiry&&!isOver&&Math.ceil((new Date(p.expiry)-new Date())/864e5)<=7;
+  items.sort(function(a,b){return (a[1].expiry||'9999').localeCompare(b[1].expiry||'9999');});
+  el.innerHTML=items.map(function(entry){var bc=entry[0],p=entry[1];
+    var low=p.min&&p.stock<=p.min;
+    var expHtml='';
+    if(p.expiry){var expR=expStatus(p.expiry);expHtml='<div class="li-exp"><span class="badge '+expR.cls+'">'+expR.label+'</span></div>';}
+    var isOver=p.expiry&&new Date(p.expiry)<new Date();
+    var isNear=p.expiry&&!isOver&&Math.ceil((new Date(p.expiry)-new Date())/864e5)<=7;
     return '<div class="list-item'+((low||isOver||isNear)?' alert':'')+'" onclick="goScan(''+bc+'')">' +
       '<div><div class="li-name">'+p.name+(isOver?' 🚨':isNear?' ⚠️':low?' ⚠️':'')+'</div><div class="li-code">'+bc+'</div>'+expHtml+'</div>' +
       '<div><div class="li-num'+(low?' low':'')+'">'+p.stock+'</div><div class="li-unit">'+p.unit+'</div></div>' +
@@ -1133,7 +1134,7 @@ function goScan(bc){go('scan');document.getElementById('bcInput').value=bc;looku
 
 // ─── 履歴 ───
 function renderLog(){
-  const el=document.getElementById('logList'),logs=[...db.logs].reverse();
+  var el=document.getElementById('logList'),logs=[...db.logs].reverse();
   if(!logs.length){el.innerHTML='<div class="empty"><div class="empty-icon">🕐</div><div class="empty-text">履歴がありません</div></div>';return}
   el.innerHTML=logs.slice(0,200).map(function(l){
     return '<div class="log-item">'+
