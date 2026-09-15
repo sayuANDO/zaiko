@@ -1,0 +1,1146 @@
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="在庫管理">
+<title>在庫管理</title>
+<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<style>
+:root{
+  --bg:#F5F5F0;--white:#FFF;--border:#E0DED8;
+  --text:#1A1A1A;--text2:#6B6B65;
+  --green:#1D7A3A;--gl:#E8F5EC;
+  --red:#B5271A;--rl:#FDECEA;
+  --amber:#8A6000;--al:#FFF8E6;
+  --blue:#1A4FA8;--bl:#EBF0FA;
+  --radius:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* ヘッダー */
+header{background:var(--white);border-bottom:1px solid var(--border);padding:12px 16px;padding-top:calc(12px + env(safe-area-inset-top,0px));position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between}
+.app-title{font-size:17px;font-weight:900}
+.hright{display:flex;gap:6px;align-items:center}
+.op-badge{background:var(--bl);color:var(--blue);border:1.5px solid #99B4E8;border-radius:20px;padding:5px 11px;font-size:12px;font-weight:700;cursor:pointer;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hbtn{background:var(--bg);color:var(--text2);border:1.5px solid var(--border);border-radius:20px;padding:5px 11px;font-size:12px;font-weight:700;cursor:pointer}
+
+/* 時計バー */
+.clock-bar{background:var(--white);border-bottom:1px solid var(--border);padding:12px 16px 16px;text-align:center}
+.clock-time{font-size:28px;font-weight:900;letter-spacing:2px;font-variant-numeric:tabular-nums;color:var(--text)}
+.clock-date{font-size:13px;font-weight:700;margin-bottom:4px;color:var(--text2)}
+.clock-qr-wrap{margin-top:12px;display:flex;flex-direction:column;align-items:center;gap:8px}
+.clock-qr-wrap canvas{border-radius:10px;border:2px solid var(--border)}
+.clock-qr-label{font-size:12px;color:var(--text2);letter-spacing:.3px}
+.clock-qr-btn{background:var(--blue);color:#fff;border:none;border-radius:20px;padding:8px 22px;font-size:13px;font-weight:700;cursor:pointer;margin-top:4px}
+
+/* タブ */
+nav{display:flex;background:var(--white);border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+.tab{flex:1;min-width:60px;padding:10px 4px 8px;text-align:center;cursor:pointer;border-bottom:3px solid transparent;color:var(--text2);font-size:11px;user-select:none;transition:all .15s;white-space:nowrap}
+.tab.on{border-bottom-color:var(--text);color:var(--text)}
+.tab-icon{font-size:18px;display:block;margin-bottom:2px}
+
+main{padding:14px;max-width:480px;margin:0 auto;padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}
+section{display:none}
+section.on{display:block}
+
+/* 確認ダイアログ */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:300;align-items:flex-end;justify-content:center;padding-bottom:env(safe-area-inset-bottom,0px)}
+.overlay.on{display:flex}
+.confirm-box{background:var(--white);border-radius:20px 20px 0 0;padding:24px 20px 28px;width:100%;max-width:480px}
+.confirm-title{font-size:18px;font-weight:900;margin-bottom:6px;text-align:center}
+.confirm-detail{font-size:15px;color:var(--text2);text-align:center;margin-bottom:20px;line-height:1.6;white-space:pre-line}
+.confirm-yes{width:100%;border:none;border-radius:12px;padding:15px;font-size:16px;font-weight:800;cursor:pointer;margin-bottom:10px}
+.confirm-no{width:100%;background:none;border:1.5px solid var(--border);border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;color:var(--text2)}
+.cy-nyuko{background:var(--green);color:#fff}
+.cy-shukko{background:var(--red);color:#fff}
+.cy-tana{background:var(--amber);color:#fff}
+.cy-ret{background:#6B21A8;color:#fff}
+
+/* モーダル */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center}
+.modal-bg.on{display:flex}
+.modal{background:var(--white);border-radius:18px;padding:24px 20px;width:88%;max-width:380px}
+.modal-title{font-size:17px;font-weight:800;margin-bottom:6px}
+.modal-desc{font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6}
+.modal-input{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;font-size:16px;color:var(--text);outline:none;margin-bottom:12px}
+.modal-input:focus{border-color:var(--blue)}
+.modal-btn{width:100%;background:var(--text);color:#fff;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:800;cursor:pointer}
+
+/* チュートリアル */
+.tutorial{background:var(--white);border:2px solid var(--blue);border-radius:var(--radius);padding:20px 16px;margin-bottom:14px;text-align:center}
+.tut-step{font-size:12px;color:var(--blue);font-weight:700;margin-bottom:8px}
+.tut-icon{font-size:44px;margin-bottom:10px}
+.tut-title{font-size:17px;font-weight:900;margin-bottom:6px}
+.tut-desc{font-size:14px;color:var(--text2);line-height:1.6;margin-bottom:16px}
+.tut-dots{display:flex;justify-content:center;gap:6px;margin-bottom:16px}
+.tut-dot{width:8px;height:8px;border-radius:50%;background:var(--border)}
+.tut-dot.on{background:var(--blue)}
+.tut-next{width:100%;background:var(--blue);color:#fff;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:800;cursor:pointer}
+.tut-skip{background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;margin-top:10px;display:block;width:100%;text-align:center}
+
+/* 期限バナー */
+.exp-banner{background:var(--rl);border:2px solid var(--red);border-radius:12px;padding:13px 15px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+.exp-banner-text{font-size:14px;font-weight:700;color:var(--red)}
+.exp-banner-sub{font-size:12px;color:var(--red);opacity:.8;margin-top:2px}
+
+/* カード */
+.card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:12px}
+.card-head{display:flex;align-items:center;justify-content:space-between;padding:13px 15px;border-bottom:1px solid var(--border)}
+.card-title{font-size:14px;font-weight:700}
+.cam-btn{background:var(--text);color:#fff;border:none;border-radius:20px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer}
+.cam-btn.stop{background:var(--red)}
+
+/* カメラ */
+.vf{display:none;position:relative;background:#000}.vf.on{background:transparent}
+.vf.on{display:block}
+video{width:100%;max-height:240px;object-fit:cover;display:block;background:transparent}
+.vf-frame{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:170px;height:95px;border:2px solid #4ADE80;border-radius:8px;pointer-events:none}
+.vf-line{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#4ADE80,transparent);animation:sw 1.8s ease-in-out infinite}
+@keyframes sw{0%,100%{top:0}50%{top:calc(100% - 2px)}}
+.manual-row{display:flex;gap:8px;padding:10px 12px 12px}
+.bc-input{flex:1;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;font-size:15px;color:var(--text);outline:none}
+.bc-input:focus{border-color:var(--blue)}
+.bc-input::placeholder{color:var(--text2)}
+.search-btn{background:var(--blue);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:14px;font-weight:700;cursor:pointer}
+
+/* 担当者バー */
+.op-bar{background:var(--bl);border:1.5px solid #99B4E8;border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+.op-bar-name{font-size:15px;font-weight:800;color:var(--blue)}
+.op-bar-lbl{font-size:12px;color:var(--text2)}
+.op-bar-change{font-size:12px;color:var(--blue);cursor:pointer;text-decoration:underline}
+
+/* 商品カード */
+.product-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px;display:none}
+.product-card.on{display:block}
+.pname{font-size:20px;font-weight:900;margin-bottom:2px}
+.pcode{font-size:11px;color:var(--text2);font-family:monospace;margin-bottom:6px}
+.pexp-badge{margin-bottom:12px}
+.stock-row{display:flex;align-items:flex-end;gap:8px;margin-bottom:16px}
+.snum{font-size:52px;font-weight:900;line-height:1}
+.snum.low{color:var(--red)}
+.sunit{font-size:16px;color:var(--text2)}
+.stag{font-size:11px;color:var(--text2)}
+
+/* 数量・期限入力 */
+.qty-row{display:flex;align-items:center;justify-content:space-between;background:var(--bg);border-radius:10px;padding:10px 13px;margin-bottom:10px}
+.qty-label{font-size:13px;color:var(--text2);font-weight:600}
+.qty-ctrl{display:flex;align-items:center}
+.qbtn{width:40px;height:40px;background:var(--white);border:1.5px solid var(--border);border-radius:8px;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text)}
+.qbtn:active{background:var(--border)}
+.qnum{width:56px;text-align:center;font-size:22px;font-weight:800;background:none;border:none;outline:none;color:var(--text)}
+.exp-row{display:flex;align-items:center;justify-content:space-between;background:var(--bg);border-radius:10px;padding:10px 13px;margin-bottom:10px}
+.exp-label{font-size:13px;color:var(--text2);font-weight:600}
+.exp-input{background:var(--white);border:1.5px solid var(--border);border-radius:8px;padding:7px 10px;font-size:14px;color:var(--text);outline:none}
+.exp-input:focus{border-color:var(--blue)}
+
+/* 操作ボタン */
+.ops{display:flex;gap:10px;margin-bottom:10px}
+.op{flex:1;border:none;border-radius:14px;padding:18px 8px 14px;font-size:15px;font-weight:800;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px}
+.op:active{opacity:.85;transform:scale(.97)}
+.op-icon{font-size:30px}
+.op-in{background:var(--gl);color:var(--green);border:2px solid #A8D8B5}
+.op-out{background:var(--rl);color:var(--red);border:2px solid #F0B0AA}
+.op-inv{background:var(--al);color:var(--amber);border:2px solid #E0C870}
+.op-ret{background:#F0EBF8;color:#6B21A8;border:2px solid #D8B4FE}
+
+/* 取り消しバー */
+.undo-bar{background:#1A1A1A;color:#fff;border-radius:10px;padding:12px 16px;margin-top:8px;display:none;align-items:center;justify-content:space-between}
+.undo-bar.on{display:flex}
+.undo-btn{background:#fff;color:#1A1A1A;border:none;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:800;cursor:pointer}
+
+/* 棚卸し */
+.tana-panel{display:none;background:var(--al);border:1.5px solid #E0C870;border-radius:12px;padding:14px}
+.tana-panel.on{display:block}
+.tana-label{font-size:13px;font-weight:700;color:var(--amber);margin-bottom:8px}
+.tana-in{width:100%;background:var(--white);border:1.5px solid #E0C870;border-radius:10px;padding:12px;font-size:26px;font-weight:800;text-align:center;color:var(--text);outline:none;margin-bottom:10px}
+.tana-ok{width:100%;background:var(--amber);color:#fff;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:800;cursor:pointer}
+.tana-cancel{display:block;width:100%;background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;margin-top:8px;text-align:center}
+
+/* 在庫一覧 */
+.list-item{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:13px 15px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+.list-item:active{background:var(--bg)}
+.list-item.alert{border-color:#F0B0AA}
+.li-name{font-size:15px;font-weight:700}
+.li-code{font-size:11px;color:var(--text2);font-family:monospace}
+.li-exp{font-size:11px;margin-top:2px}
+.li-num{font-size:26px;font-weight:900;text-align:right}
+.li-num.low{color:var(--red)}
+.li-unit{font-size:11px;color:var(--text2);text-align:right}
+
+/* 履歴 */
+.log-item{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px}
+.log-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.log-badge{font-size:11px;font-weight:800;padding:3px 9px;border-radius:6px}
+.log-badge.入庫{background:var(--gl);color:var(--green)}
+.log-badge.出庫{background:var(--rl);color:var(--red)}
+.log-badge.棚卸し{background:var(--al);color:var(--amber)}
+.log-badge.取消{background:#eee;color:var(--text2)}
+.log-badge.倉庫へ返却{background:#F0EBF8;color:#6B21A8}
+.log-time{font-size:11px;color:var(--text2)}
+.log-name{font-size:14px;font-weight:700}
+.log-detail{font-size:12px;color:var(--text2);margin-top:2px}
+.log-op{font-size:11px;color:var(--blue);margin-top:2px;font-weight:600}
+
+/* 登録 */
+.fgroup{margin-bottom:11px}
+.fgroup label{display:block;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
+.finput{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:11px 13px;font-size:15px;color:var(--text);outline:none}
+.finput:focus{border-color:var(--blue)}
+.frow{display:flex;gap:10px}
+.frow .fgroup{flex:1}
+.add-btn{width:100%;background:var(--text);color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:800;cursor:pointer;margin-top:4px}
+
+/* バッジ */
+.badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px}
+.badge-ok{background:var(--gl);color:var(--green)}
+.badge-near{background:var(--al);color:var(--amber)}
+.badge-over{background:var(--rl);color:var(--red)}
+
+/* 共有タブ */
+.share-section{margin-bottom:16px}
+.share-title{font-size:13px;font-weight:800;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+.share-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center;margin-bottom:12px}
+.share-card-title{font-size:16px;font-weight:800;margin-bottom:6px}
+.share-card-desc{font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:16px}
+.share-qr-big canvas{border-radius:12px;border:1px solid var(--border)}
+.share-url{font-size:11px;color:var(--text2);font-family:monospace;word-break:break-all;margin:10px 0;padding:8px 12px;background:var(--bg);border-radius:8px}
+.share-btns{display:flex;gap:8px;margin-top:12px}
+.share-btn{flex:1;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:700;cursor:pointer}
+.share-btn-green{background:var(--green);color:#fff}
+.share-btn-blue{background:var(--bl);color:var(--blue);border:1.5px solid #99B4E8}
+
+/* 使い方ガイド */
+.guide-step{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;gap:14px;align-items:flex-start}
+.guide-num{width:30px;height:30px;border-radius:50%;background:var(--text);color:#fff;font-size:14px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.guide-body{}
+.guide-step-title{font-size:15px;font-weight:700;margin-bottom:3px}
+.guide-step-desc{font-size:13px;color:var(--text2);line-height:1.6}
+.guide-tip{background:var(--bl);border:1px solid #99B4E8;border-radius:10px;padding:12px 14px;font-size:13px;color:var(--blue);line-height:1.6;margin-bottom:10px}
+
+/* レポート */
+.report-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px}
+.report-title{font-size:15px;font-weight:800;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.report-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:14px}
+.report-row:last-child{border-bottom:none}
+.report-label{color:var(--text2)}
+.report-val{font-weight:700}
+.report-val.red{color:var(--red)}
+.report-val.green{color:var(--green)}
+.report-btn{width:100%;background:var(--text);color:#fff;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;margin-top:10px}
+.report-alert-item{background:var(--rl);border-radius:8px;padding:8px 12px;margin-bottom:6px;font-size:13px;color:var(--red);font-weight:600}
+
+/* トースト */
+.toast{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%) translateY(8px);background:var(--text);color:#fff;border-radius:24px;padding:10px 22px;font-size:14px;font-weight:700;z-index:400;opacity:0;transition:all .25s;white-space:nowrap;max-width:92vw;text-align:center;pointer-events:none}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.ok{background:var(--green)}
+.toast.ng{background:var(--red)}
+
+.empty{text-align:center;padding:44px 20px;color:var(--text2)}
+.empty-icon{font-size:42px;margin-bottom:10px}
+.empty-text{font-size:14px}
+
+/* ダッシュボード */
+.dash-title{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin:16px 0 10px}
+.kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px}
+.kpi-card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center}
+.kpi-label{font-size:11px;color:var(--text2);font-weight:600;margin-bottom:6px}
+.kpi-val{font-size:36px;font-weight:900;line-height:1;margin-bottom:4px}
+.kpi-sub{font-size:11px;color:var(--text2)}
+.kpi-blue{border-top:3px solid var(--blue)}
+.kpi-red{border-top:3px solid var(--red)}
+.kpi-amber{border-top:3px solid var(--amber)}
+.kpi-green{border-top:3px solid var(--green)}
+
+/* テーブル */
+.dash-table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px}
+.dash-table th{background:var(--text);color:#fff;padding:8px 10px;text-align:left;font-size:11px;font-weight:700;white-space:nowrap}
+.dash-table td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+.dash-table tr:last-child td{border-bottom:none}
+.dash-table tr:nth-child(even) td{background:var(--bg)}
+.dash-section{background:var(--white);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:12px}
+.dash-section-head{padding:12px 14px;font-size:14px;font-weight:800;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.dash-section-body{padding:0}
+.sort-btn{font-size:11px;color:var(--blue);cursor:pointer;background:none;border:none;font-weight:700}
+.status-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;white-space:nowrap}
+.sb-ok{background:var(--gl);color:var(--green)}
+.sb-warn{background:var(--al);color:var(--amber)}
+.sb-ng{background:var(--rl);color:var(--red)}
+.sb-purple{background:#F0EBF8;color:#6B21A8}
+.sb-gray{background:#eee;color:#888}
+.tab-btns{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none}
+.tab-btns::-webkit-scrollbar{display:none}
+.tab-btn{background:var(--bg);border:1.5px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;color:var(--text2)}
+.tab-btn.on{background:var(--text);color:#fff;border-color:var(--text)}
+
+/* 担当者プルダウン */
+.op-select{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:11px 13px;font-size:15px;color:var(--text);outline:none;margin-bottom:12px;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMicgaGVpZ2h0PSc4JyB2aWV3Qm94PScwIDAgMTIgOCc+PHBhdGggZD0nTTEgMWw1IDUgNS01JyBzdHJva2U9JyM2QjZCNjUnIHN0cm9rZS13aWR0aD0nMS41JyBmaWxsPSdub25lJyBzdHJva2UtbGluZWNhcD0ncm91bmQnLz48L3N2Zz4=");background-repeat:no-repeat;background-position:right 14px center;cursor:pointer}
+.op-select:focus{border-color:var(--blue)}
+
+/* PINモーダル */
+.pin-dots{display:flex;justify-content:center;gap:12px;margin:20px 0}
+.pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--border);background:var(--bg);transition:all .15s}
+.pin-dot.filled{background:var(--blue);border-color:var(--blue)}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
+.pin-key{background:var(--bg);border:1.5px solid var(--border);border-radius:12px;padding:16px;font-size:22px;font-weight:700;cursor:pointer;text-align:center;transition:all .1s}
+.pin-key:active{background:var(--border)}
+.pin-key.del{font-size:18px;color:var(--red)}
+.pin-err{color:var(--red);font-size:13px;text-align:center;margin-top:8px;min-height:20px}
+
+/* 管理者画面 */
+.admin-header{background:var(--amber-light,#FFF8E6);border:2px solid var(--amber);border-radius:12px;padding:13px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+.admin-badge{font-size:13px;font-weight:800;color:var(--amber)}
+.admin-logout{background:none;border:1.5px solid var(--amber);border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;color:var(--amber);cursor:pointer}
+.staff-item{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
+.staff-name{font-size:15px;font-weight:700}
+.staff-del{background:var(--rl);color:var(--red);border:none;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer}
+.staff-add-row{display:flex;gap:8px;margin-bottom:12px}
+.staff-add-input{flex:1;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:10px 13px;font-size:15px;color:var(--text);outline:none}
+.staff-add-input:focus{border-color:var(--blue)}
+.staff-add-btn{background:var(--green);color:#fff;border:none;border-radius:10px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer}
+.device-card{background:var(--bl);border:1px solid #99B4E8;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--blue);line-height:1.8}
+.pin-change-btn{background:none;border:1.5px solid var(--border);border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;color:var(--text2);cursor:pointer;width:100%;margin-top:8px}
+
+/* 印刷 */
+@media print{
+  header,nav,.clock-bar,#sec-scan,#sec-stock,#sec-log,#sec-add,.toast{display:none!important}
+  #sec-share{display:block!important}
+  .share-card{border:none;box-shadow:none}
+  .share-btns,.hbtn{display:none!important}
+}
+</style>
+</head>
+<body>
+
+<!-- 確認ダイアログ -->
+<div class="overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-title" id="confirmTitle"></div>
+    <div class="confirm-detail" id="confirmDetail"></div>
+    <button class="confirm-yes" id="confirmYes">確定する</button>
+    <button class="confirm-no" onclick="closeConfirm()">キャンセル</button>
+  </div>
+</div>
+
+<!-- PINモーダル -->
+<div class="modal-bg" id="pinModalBg">
+  <div class="modal">
+    <div class="modal-title" id="pinModalTitle">🔐 管理者PIN</div>
+    <div class="modal-desc" id="pinModalDesc">4桁のPIN番号を入力してください</div>
+    <div class="pin-dots">
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
+    </div>
+    <div class="pin-err" id="pinErr"></div>
+    <div class="pin-pad">
+      <button class="pin-key" onclick="pinKey('1')">1</button>
+      <button class="pin-key" onclick="pinKey('2')">2</button>
+      <button class="pin-key" onclick="pinKey('3')">3</button>
+      <button class="pin-key" onclick="pinKey('4')">4</button>
+      <button class="pin-key" onclick="pinKey('5')">5</button>
+      <button class="pin-key" onclick="pinKey('6')">6</button>
+      <button class="pin-key" onclick="pinKey('7')">7</button>
+      <button class="pin-key" onclick="pinKey('8')">8</button>
+      <button class="pin-key" onclick="pinKey('9')">9</button>
+      <button class="pin-key" onclick="pinKey('cancel')">✕</button>
+      <button class="pin-key" onclick="pinKey('0')">0</button>
+      <button class="pin-key del" onclick="pinKey('del')">⌫</button>
+    </div>
+  </div>
+</div>
+
+<!-- 担当者モーダル -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <div class="modal-title">👤 担当者を選択</div>
+    <div class="modal-desc">あなたの名前を選択してください。</div>
+    <select class="op-select" id="modalSelect"></select>
+    <button class="modal-btn" onclick="saveOperator()">選択して始める</button>
+    <div style="font-size:12px;color:var(--text2);text-align:center;margin-top:10px">担当者の追加は管理者タブから行えます</div>
+  </div>
+</div>
+
+<header>
+  <div class="app-title">📦 在庫管理</div>
+  <div class="hright">
+    <div class="op-badge" id="opBadge" onclick="openModal()">👤 未設定</div>
+    <button class="hbtn" onclick="sendToSheet()">📊 出力</button>
+  </div>
+</header>
+
+<!-- 時計バー -->
+<div class="clock-bar">
+  <div class="clock-date" id="clockDate"></div>
+  <div class="clock-time" id="clockTime"></div>
+  <div class="clock-qr-wrap">
+    <div id="clockQRWrap"></div>
+    <div class="clock-qr-label">📷 iPhoneで読み取るとアプリが開きます</div>
+    <button class="clock-qr-btn" onclick="go('share')">QRコード・共有メニュー →</button>
+  </div>
+</div>
+
+<nav>
+  <div class="tab on"  onclick="go('scan')"><span class="tab-icon">📷</span>スキャン</div>
+  <div class="tab"     onclick="go('stock')"><span class="tab-icon">📦</span>在庫</div>
+  <div class="tab"     onclick="go('log')"><span class="tab-icon">🕐</span>履歴</div>
+  <div class="tab"     onclick="go('add')"><span class="tab-icon">➕</span>登録</div>
+  <div class="tab"     onclick="go('share')"><span class="tab-icon">🔗</span>共有</div>
+  <div class="tab"     onclick="go('report')"><span class="tab-icon">📊</span>報告</div>
+  <div class="tab"     onclick="go('admin')"><span class="tab-icon">🔐</span>管理者</div>
+</nav>
+
+<main>
+
+  <!-- スキャン -->
+  <section id="sec-scan" class="on">
+    <div id="expBanner" class="exp-banner" style="display:none" onclick="go('stock')">
+      <div>
+        <div class="exp-banner-text">🚨 期限切れ・期限間近の商品があります</div>
+        <div class="exp-banner-sub" id="expBannerSub"></div>
+      </div>
+      <div style="font-size:20px">→</div>
+    </div>
+
+    <div id="tutBox" class="tutorial" style="display:none">
+      <div class="tut-step" id="tutStep"></div>
+      <div class="tut-icon" id="tutIcon"></div>
+      <div class="tut-title" id="tutTitle"></div>
+      <div class="tut-desc" id="tutDesc"></div>
+      <div class="tut-dots" id="tutDots"></div>
+      <button class="tut-next" id="tutNext" onclick="nextTut()"></button>
+      <button class="tut-skip" onclick="skipTut()">スキップ</button>
+    </div>
+
+    <div class="op-bar">
+      <div><div class="op-bar-lbl">担当者</div><div class="op-bar-name" id="opBarName">未設定</div></div>
+      <span class="op-bar-change" onclick="openModal()">変更</span>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">バーコードスキャン</span>
+        <button class="cam-btn" id="camBtn" onclick="toggleCam()">▶ カメラ起動</button>
+      </div>
+      <div class="vf" id="vf">
+        <video id="video" playsinline muted autoplay></video>
+        <div class="vf-frame"><div class="vf-line"></div></div>
+      </div>
+      <div class="manual-row">
+        <input class="bc-input" id="bcInput" type="text" inputmode="numeric" placeholder="番号を直接入力" autocomplete="off">
+        <button class="search-btn" onclick="lookup()">検索</button>
+      </div>
+    </div>
+
+    <div class="product-card" id="productCard">
+      <div class="pname" id="pName"></div>
+      <div class="pcode" id="pCode"></div>
+      <div class="pexp-badge" id="pExpBadge"></div>
+      <div class="stock-row">
+        <div class="snum" id="pStock">0</div>
+        <div><div class="sunit" id="pUnit">個</div><div class="stag">現在庫</div></div>
+      </div>
+      <div class="qty-row">
+        <span class="qty-label">数量</span>
+        <div class="qty-ctrl">
+          <button class="qbtn" onclick="adj(-1)">−</button>
+          <input class="qnum" id="qVal" type="number" value="1" min="1" max="9999">
+          <button class="qbtn" onclick="adj(1)">＋</button>
+        </div>
+      </div>
+      <div class="exp-row">
+        <span class="exp-label">🗓 賞味期限</span>
+        <input class="exp-input" id="expInput" type="date">
+      </div>
+      <div class="ops">
+        <button class="op op-in"  onclick="askConfirm('nyuko')"><span class="op-icon">⬇️</span>入　庫</button>
+        <button class="op op-out" onclick="askConfirm('shukko')"><span class="op-icon">⬆️</span>出　庫</button>
+        <button class="op op-ret" onclick="askConfirm('henkyaku')"><span class="op-icon">↩️</span>倉庫へ返却</button>
+        <button class="op op-inv" onclick="openTana()"><span class="op-icon">📋</span>棚卸し</button>
+      </div>
+      <div class="undo-bar" id="undoBar">
+        <div><div style="font-size:13px">操作を取り消せます</div><div style="font-size:11px;opacity:.6" id="undoTimer"></div></div>
+        <button class="undo-btn" onclick="doUndo()">取り消し</button>
+      </div>
+      <div class="tana-panel" id="tanaPanel">
+        <div class="tana-label">実際の在庫数を入力してください</div>
+        <input class="tana-in" id="tanaIn" type="number" inputmode="numeric" placeholder="0" min="0">
+        <button class="tana-ok" onclick="askConfirm('tanaoroshi')">✓ 棚卸し確定</button>
+        <button class="tana-cancel" onclick="closeTana()">キャンセル</button>
+      </div>
+    </div>
+    <div class="empty" id="scanEmpty"><div class="empty-icon">📷</div><div class="empty-text">カメラを起動するか<br>番号を入力してください</div></div>
+  </section>
+
+  <!-- 在庫一覧 -->
+  <section id="sec-stock"><div id="stockList"></div></section>
+
+  <!-- 履歴 -->
+  <section id="sec-log"><div id="logList"></div></section>
+
+  <!-- 商品登録 -->
+  <section id="sec-add">
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">バーコードをスキャン</span>
+        <button class="cam-btn" id="addCamBtn" onclick="toggleAddCam()">▶ カメラ</button>
+      </div>
+      <div class="vf" id="addVf">
+        <video id="addVideo" playsinline muted autoplay></video>
+        <div class="vf-frame"><div class="vf-line"></div></div>
+      </div>
+    </div>
+    <div class="card" style="padding:16px">
+      <div class="fgroup"><label>バーコード番号 *</label><input class="finput" id="fBarcode" type="text" inputmode="numeric" placeholder="スキャンまたは手入力"></div>
+      <div class="fgroup"><label>商品名 *</label><input class="finput" id="fName" type="text" placeholder="例：A4コピー用紙"></div>
+      <div class="frow">
+        <div class="fgroup"><label>単位</label><input class="finput" id="fUnit" type="text" placeholder="個・箱・本"></div>
+        <div class="fgroup"><label>初期在庫数</label><input class="finput" id="fStock" type="number" inputmode="numeric" placeholder="0"></div>
+      </div>
+      <div class="fgroup"><label>最小在庫数（警告ライン）</label><input class="finput" id="fMin" type="number" inputmode="numeric" placeholder="0"></div>
+      <button class="add-btn" onclick="addProduct()">登録する</button>
+    </div>
+  </section>
+
+  <!-- 共有タブ -->
+  <section id="sec-share">
+    <!-- QRコード -->
+    <div class="share-section">
+      <div class="share-title">📱 QRコードで共有</div>
+      <div class="share-card">
+        <div class="share-card-title">スタッフに配布するQRコード</div>
+        <div class="share-card-desc">このQRコードを印刷して現場に貼ってください。<br>iPhoneのカメラで読み取るだけでアプリが開きます。</div>
+        <div class="share-qr-big"><div id="shareQRWrap"></div></div>
+        <div class="share-url" id="shareUrl"></div>
+        <div class="share-btns">
+          <button class="share-btn share-btn-green" onclick="dlQR()">⬇ 画像を保存</button>
+          <button class="share-btn share-btn-blue" onclick="printQR()">🖨 印刷する</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 使い方ガイド -->
+    <div class="share-section">
+      <div class="share-title">📖 使い方ガイド（スタッフ向け）</div>
+      <div class="guide-tip">💡 このガイドを印刷してQRコードと一緒に貼っておくと、スタッフへの説明が不要になります。</div>
+      <div class="guide-step">
+        <div class="guide-num">1</div>
+        <div class="guide-body">
+          <div class="guide-step-title">QRコードを読み取る</div>
+          <div class="guide-step-desc">iPhoneのカメラでQRコードを読み取り、Safariで開く。「ホーム画面に追加」でアプリアイコンになります。</div>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="guide-num">2</div>
+        <div class="guide-body">
+          <div class="guide-step-title">担当者名を入力する（初回のみ）</div>
+          <div class="guide-step-desc">最初に自分の名前を入力します。次回からは自動で表示されます。</div>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="guide-num">3</div>
+        <div class="guide-body">
+          <div class="guide-step-title">商品バーコードをスキャン</div>
+          <div class="guide-step-desc">「カメラ起動」をタップして商品のバーコードを読み取ります。番号の直接入力も可能です。</div>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="guide-num">4</div>
+        <div class="guide-body">
+          <div class="guide-step-title">入庫・出庫・棚卸しをタップ</div>
+          <div class="guide-step-desc">数量を確認して操作ボタンをタップ。確認画面が出るので内容をチェックして「確定する」を押します。<br>製造後に余った資材は「↩️ 返却」で倉庫に戻せます。</div>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="guide-num">5</div>
+        <div class="guide-body">
+          <div class="guide-step-title">間違えたら「取り消し」</div>
+          <div class="guide-step-desc">操作後30秒以内なら取り消しボタンで元に戻せます。慌てずに操作してください。</div>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:10px">
+        <button class="share-btn share-btn-blue" style="width:100%;padding:13px;font-size:14px" onclick="printGuide()">🖨 使い方ガイドを印刷する</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 報告タブ（ダッシュボード） -->
+  <section id="sec-report">
+    <!-- KPIグリッド -->
+    <div class="dash-title">📊 在庫サマリー</div>
+    <div class="kpi-grid">
+      <div class="kpi-card kpi-blue"><div class="kpi-label">総商品数</div><div class="kpi-val" id="kpiTotal">-</div><div class="kpi-sub">登録商品</div></div>
+      <div class="kpi-card kpi-red"><div class="kpi-label">在庫不足</div><div class="kpi-val" id="kpiShort" style="color:var(--red)">-</div><div class="kpi-sub">要発注</div></div>
+      <div class="kpi-card kpi-red"><div class="kpi-label">期限切れ</div><div class="kpi-val" id="kpiExpOver" style="color:var(--red)">-</div><div class="kpi-sub">要廃棄</div></div>
+      <div class="kpi-card kpi-amber"><div class="kpi-label">期限間近</div><div class="kpi-val" id="kpiExpNear" style="color:var(--amber)">-</div><div class="kpi-sub">7日以内</div></div>
+    </div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="kpi-card kpi-green"><div class="kpi-label">本日入庫</div><div class="kpi-val" id="kpiNyuko" style="color:var(--green);font-size:28px">-</div><div class="kpi-sub">件</div></div>
+      <div class="kpi-card kpi-red"><div class="kpi-label">本日出庫</div><div class="kpi-val" id="kpiShukko" style="color:var(--red);font-size:28px">-</div><div class="kpi-sub">件</div></div>
+      <div class="kpi-card" style="border-top:3px solid #6B21A8"><div class="kpi-label">本日返却</div><div class="kpi-val" id="kpiHenkyaku" style="color:#6B21A8;font-size:28px">-</div><div class="kpi-sub">件</div></div>
+    </div>
+
+    <!-- タブ切り替え -->
+    <div class="dash-section">
+      <div class="dash-section-head">
+        <span id="dashTabLabel">⚠️ 要注意商品</span>
+        <button class="sort-btn" id="dashSortBtn" onclick="toggleDashSort()">↕ 並び替え</button>
+      </div>
+      <div class="tab-btns">
+        <button class="tab-btn on" onclick="switchDash('alert')">⚠️ 要注意</button>
+        <button class="tab-btn" onclick="switchDash('stock')">📦 在庫一覧</button>
+        <button class="tab-btn" onclick="switchDash('history')">📋 履歴</button>
+        <button class="tab-btn" onclick="switchDash('staff')">👥 担当者別</button>
+        <button class="tab-btn" onclick="switchDash('expiry')">🗓 期限管理</button>
+      </div>
+      <div class="dash-section-body" id="dashBody"></div>
+    </div>
+
+    <button class="report-btn" onclick="sendToSheet()">📊 CSVを出力してスプレッドシートで開く</button>
+  </section>
+
+  <!-- 管理者タブ -->
+  <section id="sec-admin">
+    <div id="adminLockView">
+      <div style="text-align:center;padding:32px 20px">
+        <div style="font-size:48px;margin-bottom:12px">🔐</div>
+        <div style="font-size:18px;font-weight:800;margin-bottom:8px">管理者ページ</div>
+        <div style="font-size:14px;color:var(--text2);margin-bottom:24px">PIN番号でログインしてください</div>
+        <button class="modal-btn" onclick="openPinModal('login')" style="max-width:200px;margin:0 auto;display:block">PINでログイン</button>
+      </div>
+    </div>
+    <div id="adminView" style="display:none">
+      <div class="admin-header">
+        <div class="admin-badge">🔐 管理者モード</div>
+        <button class="admin-logout" onclick="adminLogout()">ログアウト</button>
+      </div>
+      <div class="device-card" id="deviceInfo"></div>
+      <div class="report-card">
+        <div class="report-title">👥 担当者管理</div>
+        <div class="staff-add-row">
+          <input class="staff-add-input" id="staffInput" type="text" placeholder="担当者名を入力">
+          <button class="staff-add-btn" onclick="addStaff()">追加</button>
+        </div>
+        <div id="staffList"></div>
+      </div>
+      <div class="report-card">
+        <div class="report-title">🔐 PIN番号の変更</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:10px">現在のPINを変更します。変更後は新しいPINでログインしてください。</div>
+        <button class="pin-change-btn" onclick="openPinModal('change')">PIN番号を変更する</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── データ ───
+const KEY='inv4';
+let db=(()=>{try{return JSON.parse(localStorage.getItem(KEY))||{p:{},logs:[]};}catch(e){return{p:{},logs:[]}}})();
+const save=()=>localStorage.setItem(KEY,JSON.stringify(db));
+
+// ─── 担当者・PIN管理 ───
+let operator = localStorage.getItem('inv_op') || '';
+const DEFAULT_PIN = '1234';
+let adminLoggedIn = false;
+let pinBuffer = '';
+let pinMode = ''; // 'login' | 'change' | 'change2'
+let pinNewTemp = '';
+
+// 担当者リスト取得
+function getStaffList(){ try{ return JSON.parse(localStorage.getItem('inv_staff'))||[]; }catch(e){ return []; } }
+function saveStaffList(list){ localStorage.setItem('inv_staff', JSON.stringify(list)); }
+function getPin(){ return localStorage.getItem('inv_pin') || DEFAULT_PIN; }
+
+// モーダルを開く
+function openModal(){
+  const list = getStaffList();
+  const sel = document.getElementById('modalSelect');
+  sel.innerHTML = '<option value="">-- 選択してください --</option>' +
+    list.map(function(n){ return '<option value="' + n + '"' + (n===operator?' selected':'') + '>' + n + '</option>'; }).join('');
+  document.getElementById('modalBg').classList.add('on');
+}
+function saveOperator(){
+  const n = document.getElementById('modalSelect').value;
+  if(!n){ toast('担当者を選択してください','ng'); return; }
+  operator = n;
+  localStorage.setItem('inv_op', n);
+  document.getElementById('modalBg').classList.remove('on');
+  updateOpUI();
+  toast(('担当者：' + n),'ok');
+}
+function updateOpUI(){
+  document.getElementById('opBadge').textContent = operator ? ('👤 ' + operator) : '👤 未設定';
+  document.getElementById('opBarName').textContent = operator || '未設定';
+}
+
+// PINモーダル
+function openPinModal(mode){
+  pinMode = mode;
+  pinBuffer = '';
+  pinNewTemp = '';
+  document.getElementById('pinErr').textContent = '';
+  const title = document.getElementById('pinModalTitle');
+  const desc  = document.getElementById('pinModalDesc');
+  if(mode === 'login'){
+    title.textContent = '🔐 管理者PIN';
+    desc.textContent  = '4桁のPIN番号を入力してください';
+  } else {
+    title.textContent = '🔐 新しいPIN（1回目）';
+    desc.textContent  = '新しい4桁のPIN番号を入力してください';
+  }
+  updatePinDots();
+  document.getElementById('pinModalBg').classList.add('on');
+}
+function closePinModal(){ document.getElementById('pinModalBg').classList.remove('on'); pinBuffer=''; updatePinDots(); }
+
+function pinKey(k){
+  if(k === 'cancel'){ closePinModal(); return; }
+  if(k === 'del'){ pinBuffer = pinBuffer.slice(0,-1); updatePinDots(); return; }
+  if(pinBuffer.length >= 4) return;
+  pinBuffer += k;
+  updatePinDots();
+  if(pinBuffer.length === 4) setTimeout(()=>confirmPin(), 150);
+}
+function updatePinDots(){
+  for(let i=0;i<4;i++){
+    document.getElementById('pd'+i).classList.toggle('filled', i < pinBuffer.length);
+  }
+}
+function confirmPin(){
+  if(pinMode === 'login'){
+    if(pinBuffer === getPin()){
+      closePinModal();
+      showAdminView();
+    } else {
+      document.getElementById('pinErr').textContent = '❌ PINが違います';
+      pinBuffer = ''; updatePinDots();
+    }
+  } else if(pinMode === 'change'){
+    pinNewTemp = pinBuffer;
+    pinBuffer = '';
+    pinMode = 'change2';
+    document.getElementById('pinModalTitle').textContent = '🔐 新しいPIN（確認）';
+    document.getElementById('pinModalDesc').textContent = 'もう一度同じPINを入力してください';
+    document.getElementById('pinErr').textContent = '';
+    updatePinDots();
+  } else if(pinMode === 'change2'){
+    if(pinBuffer === pinNewTemp){
+      localStorage.setItem('inv_pin', pinBuffer);
+      closePinModal();
+      toast('✓ PINを変更しました','ok');
+    } else {
+      document.getElementById('pinErr').textContent = '❌ PINが一致しません。もう一度';
+      pinBuffer = ''; pinNewTemp = ''; pinMode = 'change';
+      document.getElementById('pinModalTitle').textContent = '🔐 新しいPIN（1回目）';
+      document.getElementById('pinModalDesc').textContent = '新しい4桁のPIN番号を入力してください';
+      updatePinDots();
+    }
+  }
+}
+
+// 管理者画面
+function showAdminView(){
+  adminLoggedIn = true;
+  document.getElementById('adminLockView').style.display = 'none';
+  document.getElementById('adminView').style.display = 'block';
+  // 端末情報
+  const ua = navigator.userAgent;
+  var deviceParts = [
+    '📱 端末: ' + (/iPhone/.test(ua)?'iPhone':/iPad/.test(ua)?'iPad':/Android/.test(ua)?'Android':'PC/その他'),
+    '🌐 ブラウザ: ' + (/CriOS/.test(ua)?'Chrome(iOS)':/FxiOS/.test(ua)?'Firefox(iOS)':(/Safari/.test(ua)&&/Apple/.test(navigator.vendor)?'Safari':'その他')),
+    '🗓 アクセス日時: ' + new Date().toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'}),
+    '📋 言語: ' + navigator.language,
+    '🖥 画面: ' + screen.width + '×' + screen.height
+  ];
+  var device = deviceParts.join('<br>');
+  document.getElementById('deviceInfo').innerHTML = '<b>📡 現在の端末情報</b><br>' + device;
+  renderStaffList();
+}
+function adminLogout(){
+  adminLoggedIn = false;
+  document.getElementById('adminLockView').style.display = 'block';
+  document.getElementById('adminView').style.display = 'none';
+  toast('ログアウトしました','ok');
+}
+
+// 担当者管理
+function renderStaffList(){
+  const list = getStaffList();
+  const el = document.getElementById('staffList');
+  if(!list.length){
+    el.innerHTML = '<div style="font-size:14px;color:var(--text2);padding:8px 0">担当者が登録されていません</div>';
+    return;
+  }
+  el.innerHTML = list.map(function(n,i){ return '<div class="staff-item"><span class="staff-name">👤 ' + n + '</span><button class="staff-del" onclick="delStaff(' + i + ')">削除</button></div>'; }).join('');
+}
+function addStaff(){
+  const n = document.getElementById('staffInput').value.trim();
+  if(!n){ toast('担当者名を入力してください','ng'); return; }
+  const list = getStaffList();
+  if(list.includes(n)){ toast('同じ名前がすでに登録されています','ng'); return; }
+  list.push(n);
+  saveStaffList(list);
+  document.getElementById('staffInput').value = '';
+  renderStaffList();
+  toast(('「' + n + '」を追加しました'),'ok');
+}
+function delStaff(i){
+  const list = getStaffList();
+  const name = list[i];
+  if(!confirm(('「' + name + '」を削除しますか？'))) return;
+  list.splice(i,1);
+  saveStaffList(list);
+  if(operator === name){ operator=''; localStorage.removeItem('inv_op'); updateOpUI(); }
+  renderStaffList();
+  toast(('「' + name + '」を削除しました'),'ok');
+}
+
+// ─── チュートリアル ───
+const TUT=[
+  {icon:'📷',title:'バーコードをスキャン',desc:'カメラで商品のバーコードを読み取るか、番号を直接入力してください。'},
+  {icon:'⬇️⬆️',title:'入庫・出庫をタップ',desc:'数量を確認して操作ボタンをタップ。確認画面で内容をチェックしてから確定してください。'},
+  {icon:'↩️',title:'間違えても大丈夫',desc:'操作後30秒以内なら「取り消し」ボタンで元に戻せます。'}
+];
+let tutIdx=0;
+function showTut(){if(localStorage.getItem('inv_tut')){return}document.getElementById('tutBox').style.display='block';renderTut()}
+function renderTut(){
+  const t=TUT[tutIdx];
+  document.getElementById('tutStep').textContent=('STEP ' + (tutIdx+1) + ' / ' + TUT.length);
+  document.getElementById('tutIcon').textContent=t.icon;
+  document.getElementById('tutTitle').textContent=t.title;
+  document.getElementById('tutDesc').textContent=t.desc;
+  document.getElementById('tutNext').textContent=tutIdx<TUT.length-1?'次へ →':'始める';
+  document.getElementById('tutDots').innerHTML=TUT.map(function(_,i){return '<div class="tut-dot'+(i===tutIdx?' on':'')+'"></div>';}).join('');
+}
+function nextTut(){if(tutIdx<TUT.length-1){tutIdx++;renderTut()}else skipTut()}
+function skipTut(){localStorage.setItem('inv_tut','1');document.getElementById('tutBox').style.display='none'}
+
+// ─── 期限バナー ───
+function checkExpBanner(){
+  const today=new Date();today.setHours(0,0,0,0);
+  const items=Object.values(db.p).filter(p=>p.expiry);
+  const over=items.filter(p=>new Date(p.expiry)<today).length;
+  const near=items.filter(p=>{const d=new Date(p.expiry);return d>=today&&Math.ceil((d-today)/864e5)<=7}).length;
+  const banner=document.getElementById('expBanner');
+  if(over+near>0){
+    banner.style.display='flex';
+    const msgs=[];if(over>0)msgs.push(('期限切れ ' + over + '品'));if(near>0)msgs.push(('期限間近 ' + near + '品'));
+    document.getElementById('expBannerSub').textContent=msgs.join('　');
+  }else{banner.style.display='none'}
+}
+
+// ─── タブ ───
+const TABS=['scan','stock','log','add','share','report','admin'];
+function go(t){
+  TABS.forEach(function(id,i){
+    document.getElementById('sec-'+id).classList.toggle('on',id===t);
+    document.querySelectorAll('.tab')[i].classList.toggle('on',id===t);
+  });
+  stopCam();stopAddCam();
+  if(t==='stock')renderStock();
+  if(t==='log')renderLog();
+  if(t==='share')renderShareQR();
+  if(t==='report')renderReport();
+}
+
+function renderShareQR(){
+  var url=location.href.split('?')[0];
+  var el=document.getElementById('shareUrl');
+  if(el)el.textContent=url;
+  makeQR('shareQRWrap',url,240);
+}
+
+function renderReport(){
+  var today=new Date();today.setHours(0,0,0,0);
+  var items=Object.entries(db.p);
+  var el;
+  el=document.getElementById('kpiTotal');if(el)el.textContent=items.length;
+  var short=items.filter(function(x){var p=x[1];return p.min&&p.stock<=p.min;}).length;
+  el=document.getElementById('kpiShort');if(el)el.textContent=short;
+  var over=items.filter(function(x){var p=x[1];return p.expiry&&new Date(p.expiry)<today;}).length;
+  el=document.getElementById('kpiExpOver');if(el)el.textContent=over;
+  var near=items.filter(function(x){var p=x[1];if(!p.expiry)return false;var d=new Date(p.expiry);return d>=today&&Math.ceil((d-today)/864e5)<=7;}).length;
+  el=document.getElementById('kpiExpNear');if(el)el.textContent=near;
+  var todayStr=today.toLocaleDateString('ja-JP',{year:'numeric',month:'2-digit',day:'2-digit'});
+  var todayLogs=db.logs.filter(function(l){return l.time&&l.time.startsWith(todayStr.replace(/\//g,'/'));});
+  el=document.getElementById('kpiNyuko');if(el)el.textContent=todayLogs.filter(function(l){return l.action==='入庫';}).length;
+  el=document.getElementById('kpiShukko');if(el)el.textContent=todayLogs.filter(function(l){return l.action==='出庫';}).length;
+  el=document.getElementById('kpiHenkyaku');if(el)el.textContent=todayLogs.filter(function(l){return l.action==='倉庫へ返却';}).length;
+  renderDashBody();
+}
+
+// ─── ダッシュボード ───
+var dashMode='alert',dashSortAsc=true;
+function switchDash(mode){
+  dashMode=mode;
+  document.querySelectorAll('.tab-btn').forEach(function(b,i){
+    b.classList.toggle('on',['alert','stock','history','staff','expiry'][i]===mode);
+  });
+  var labels={alert:'⚠️ 要注意商品',stock:'📦 在庫一覧',history:'📋 履歴',staff:'👥 担当者別',expiry:'🗓 期限管理'};
+  var el=document.getElementById('dashTabLabel');if(el)el.textContent=labels[mode]||'';
+  renderDashBody();
+}
+function toggleDashSort(){dashSortAsc=!dashSortAsc;renderDashBody();}
+function renderDashBody(){
+  var today=new Date();today.setHours(0,0,0,0);
+  var el=document.getElementById('dashBody');
+  if(!el)return;
+  var items=Object.entries(db.p);
+  if(dashMode==='alert'){
+    var alerts=[];
+    items.forEach(function(entry){var bc=entry[0],p=entry[1];
+      if(p.expiry){var diff=Math.ceil((new Date(p.expiry)-today)/864e5);
+        if(diff<0)alerts.push({name:p.name,bc:bc,type:'期限切れ',detail:Math.abs(diff)+'日超過',cls:'sb-ng'});
+        else if(diff<=7)alerts.push({name:p.name,bc:bc,type:'期限間近',detail:'残'+diff+'日',cls:'sb-warn'});
+      }
+      if(p.min&&p.stock<=p.min)alerts.push({name:p.name,bc:bc,type:'在庫不足',detail:'現在'+p.stock+p.unit,cls:'sb-warn'});
+    });
+    if(!alerts.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text2)">✅ 要注意商品はありません</div>';return;}
+    el.innerHTML='<table class="dash-table"><thead><tr><th>商品名</th><th>種別</th><th>詳細</th></tr></thead><tbody>'+
+      alerts.map(function(a){return '<tr><td onclick="goScan(''+a.bc+'')" style="cursor:pointer;color:var(--blue);font-weight:700">'+a.name+'</td><td><span class="status-badge '+a.cls+'">'+a.type+'</span></td><td style="font-size:12px;color:var(--text2)">'+a.detail+'</td></tr>';}).join('')+
+      '</tbody></table>';
+  } else if(dashMode==='stock'){
+    if(!items.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text2)">商品がありません</div>';return;}
+    var sorted=items.slice().sort(function(a,b){return dashSortAsc?a[1].stock-b[1].stock:b[1].stock-a[1].stock;});
+    el.innerHTML='<table class="dash-table"><thead><tr><th>商品名</th><th>在庫数</th><th>単位</th><th>状態</th></tr></thead><tbody>'+
+      sorted.map(function(entry){var bc=entry[0],p=entry[1];var low=p.min&&p.stock<=p.min;var cls=p.stock<=0?'sb-ng':low?'sb-warn':'sb-ok';var lbl=p.stock<=0?'在庫なし':low?'不足':'正常';
+        return '<tr><td onclick="goScan(''+bc+'')" style="cursor:pointer;color:var(--blue);font-weight:700">'+p.name+'</td><td style="text-align:center;font-weight:800;color:'+(low?'var(--red)':'var(--text)')+'">'+p.stock+'</td><td style="text-align:center">'+p.unit+'</td><td><span class="status-badge '+cls+'">'+lbl+'</span></td></tr>';
+      }).join('')+'</tbody></table>';
+  } else if(dashMode==='history'){
+    var logs=db.logs.slice().reverse().slice(0,50);
+    if(!logs.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text2)">履歴がありません</div>';return;}
+    var actionCls={'入庫':'sb-ok','出庫':'sb-ng','棚卸し':'sb-warn','倉庫へ返却':'sb-purple','取消':'sb-gray'};
+    el.innerHTML='<table class="dash-table"><thead><tr><th>日時</th><th>商品名</th><th>操作</th><th>数量</th><th>担当者</th></tr></thead><tbody>'+
+      logs.map(function(l){return '<tr><td style="font-size:10px;color:var(--text2)">'+(l.time?l.time.slice(5,16):'')+'</td><td style="font-weight:700">'+l.name+'</td><td><span class="status-badge '+(actionCls[l.action]||'sb-gray')+'">'+l.action+'</span></td><td style="text-align:center">'+(l.qty>0?'+':'')+l.qty+l.unit+'</td><td style="font-size:12px">👤'+l.operator+'</td></tr>';}).join('')+
+      '</tbody></table>';
+  } else if(dashMode==='staff'){
+    var staffMap={};
+    db.logs.forEach(function(l){if(!l.operator)return;if(!staffMap[l.operator])staffMap[l.operator]={'入庫':0,'出庫':0,'倉庫へ返却':0,'棚卸し':0,'合計':0};if(staffMap[l.operator][l.action]!==undefined)staffMap[l.operator][l.action]++;if(l.action!=='取消')staffMap[l.operator]['合計']++;});
+    var staffList=Object.entries(staffMap).sort(function(a,b){return b[1]['合計']-a[1]['合計'];});
+    if(!staffList.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text2)">履歴がありません</div>';return;}
+    el.innerHTML='<table class="dash-table"><thead><tr><th>担当者</th><th>入庫</th><th>出庫</th><th>返却</th><th>棚卸し</th><th>合計</th></tr></thead><tbody>'+
+      staffList.map(function(entry){var n=entry[0],s=entry[1];return '<tr><td style="font-weight:700">👤'+n+'</td><td style="text-align:center;color:var(--green)">'+s['入庫']+'</td><td style="text-align:center;color:var(--red)">'+s['出庫']+'</td><td style="text-align:center;color:#6B21A8">'+s['倉庫へ返却']+'</td><td style="text-align:center;color:var(--amber)">'+s['棚卸し']+'</td><td style="text-align:center;font-weight:800;color:var(--blue)">'+s['合計']+'</td></tr>';}).join('')+
+      '</tbody></table>';
+  } else if(dashMode==='expiry'){
+    var expItems=items.filter(function(x){return x[1].expiry;}).map(function(entry){var bc=entry[0],p=entry[1];var diff=Math.ceil((new Date(p.expiry)-today)/864e5);return {bc:bc,name:p.name,stock:p.stock,unit:p.unit,expiry:p.expiry,diff:diff};}).sort(function(a,b){return dashSortAsc?a.diff-b.diff:b.diff-a.diff;});
+    if(!expItems.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text2)">賞味期限が設定された商品がありません</div>';return;}
+    el.innerHTML='<table class="dash-table"><thead><tr><th>商品名</th><th>賞味期限</th><th>残り日数</th><th>状態</th></tr></thead><tbody>'+
+      expItems.map(function(p){var cls,lbl;if(p.diff<0){cls='sb-ng';lbl='🚨期限切れ';}else if(p.diff<=7){cls='sb-warn';lbl='⚠期限間近';}else{cls='sb-ok';lbl='✓正常';}
+        return '<tr onclick="goScan(''+p.bc+'')" style="cursor:pointer"><td style="font-weight:700;color:var(--blue)">'+p.name+'</td><td style="text-align:center;font-size:12px">'+p.expiry+'</td><td style="text-align:center;font-weight:800;color:'+(p.diff<0?'var(--red)':p.diff<=7?'var(--amber)':'var(--text)')+'">'+p.diff+'日</td><td><span class="status-badge '+cls+'">'+lbl+'</span></td></tr>';
+      }).join('')+'</tbody></table>';
+  }
+}
+
+// ─── カメラ ───
+let scanning=false,reader=null;
+function toggleCam(){scanning?stopCam():startCam()}
+async function startCam(){
+  if(!operator){openModal();return}
+  scanning=true;document.getElementById('vf').classList.add('on');
+  const b=document.getElementById('camBtn');b.textContent='■ 停止';b.classList.add('stop');
+  try{
+    const hints=new Map();
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[
+      ZXing.BarcodeFormat.EAN_13,
+      ZXing.BarcodeFormat.EAN_8,
+      ZXing.BarcodeFormat.CODE_128,
+      ZXing.BarcodeFormat.CODE_39,
+      ZXing.BarcodeFormat.QR_CODE,
+      ZXing.BarcodeFormat.UPC_A,
+      ZXing.BarcodeFormat.UPC_E,
+    ]);
+    hints.set(ZXing.DecodeHintType.TRY_HARDER, false);
+    reader=new ZXing.BrowserMultiFormatReader(hints, 200);
+    await reader.decodeFromVideoDevice(null,'video',(r,e)=>{
+      if(r){stopCam();gotBC(r.getText())}
+    });
+  }
+  catch(e){toast('カメラを許可してください','ng');stopCam()}
+}
+function stopCam(){
+  scanning=false;document.getElementById('vf').classList.remove('on');
+  const b=document.getElementById('camBtn');b.textContent='▶ カメラ起動';b.classList.remove('stop');
+  if(reader){try{reader.reset()}catch(e){}reader=null}
+}
+let addScan=false,addReader=null;
+function toggleAddCam(){addScan?stopAddCam():startAddCam()}
+async function startAddCam(){
+  addScan=true;document.getElementById('addVf').classList.add('on');
+  const b=document.getElementById('addCamBtn');b.textContent='■ 停止';b.classList.add('stop');
+  try{
+    const hints=new Map();
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[
+      ZXing.BarcodeFormat.EAN_13,
+      ZXing.BarcodeFormat.EAN_8,
+      ZXing.BarcodeFormat.CODE_128,
+      ZXing.BarcodeFormat.CODE_39,
+      ZXing.BarcodeFormat.QR_CODE,
+      ZXing.BarcodeFormat.UPC_A,
+      ZXing.BarcodeFormat.UPC_E,
+    ]);
+    hints.set(ZXing.DecodeHintType.TRY_HARDER, false);
+    addReader=new ZXing.BrowserMultiFormatReader(hints, 200);
+    await addReader.decodeFromVideoDevice(null,'addVideo',(r,e)=>{
+      if(r){document.getElementById('fBarcode').value=r.getText();stopAddCam();toast('読み取り完了','ok')}
+    });
+  }
+  catch(e){toast('カメラを許可してください','ng');stopAddCam()}
+}
+function stopAddCam(){
+  addScan=false;document.getElementById('addVf').classList.remove('on');
+  const b=document.getElementById('addCamBtn');b.textContent='▶ カメラ';b.classList.remove('stop');
+  if(addReader){try{addReader.reset()}catch(e){}addReader=null}
+}
+
+// ─── 検索 ───
+function gotBC(code){document.getElementById('bcInput').value=code;lookup(code)}
+function lookup(code){
+  if(!operator){openModal();return}
+  const bc=code||document.getElementById('bcInput').value.trim();
+  if(!bc){toast('バーコードを入力してください','ng');return}
+  const p=db.p[bc];
+  if(!p){beep('ng');toast('未登録です → 登録タブで追加してください','ng');document.getElementById('fBarcode').value=bc;return}
+  beep('ok');showProduct(bc,p);
+}
+let curBC=null;
+function showProduct(bc,p){
+  curBC=bc;
+  document.getElementById('scanEmpty').style.display='none';
+  document.getElementById('productCard').classList.add('on');
+  document.getElementById('pName').textContent=p.name;
+  document.getElementById('pCode').textContent=bc;
+  const s=document.getElementById('pStock');s.textContent=p.stock;s.className='snum'+(p.min&&p.stock<=p.min?' low':'');
+  document.getElementById('pUnit').textContent=p.unit||'個';
+  document.getElementById('qVal').value=1;
+  document.getElementById('expInput').value=p.expiry||'';
+  const expEl=document.getElementById('pExpBadge');
+  if(p.expiry){const{label,cls}=expStatus(p.expiry);expEl.innerHTML=('<span class="badge ' + cls + '">' + label + '</span>')}
+  else expEl.innerHTML='<span style="font-size:12px;color:var(--text2)">賞味期限未設定</span>';
+  closeUndo();closeTana();
+}
+function expStatus(expiry){
+  const today=new Date();today.setHours(0,0,0,0);
+  const diff=Math.ceil((new Date(expiry)-today)/864e5);
+  if(diff<0)return{label:('期限切れ（' + Math.abs(diff) + '日超過）'),cls:'badge-over'};
+  if(diff<=7)return{label:('期限間近（残' + diff + '日）'),cls:'badge-near'};
+  return{label:('期限OK（残' + diff + '日）'),cls:'badge-ok'};
+}
+
+// ─── 数量 ───
+function adj(d){const e=document.getElementById('qVal');e.value=Math.max(1,Math.min(9999,(parseInt(e.value)||0)+d))}
+
+// ─── 確認ダイアログ ───
+let pendingAction=null;
+function askConfirm(type){
+  if(!curBC)return;if(!operator){openModal();return}
+  const p=db.p[curBC];const qty=parseInt(document.getElementById('qVal').value)||1;
+  let title,detail,cls;
+  if(type==='nyuko'){
+    title='入庫の確認';detail=p.name+'\n\n'+qty+p.unit+' を入庫します';cls='cy-nyuko';
+  }else if(type==='shukko'){
+    if(p.stock<qty){toast(('在庫不足（現在: ' + p.stock + p.unit + '）'),'ng');return}
+    title='出庫の確認';detail=p.name+'\n\n'+qty+p.unit+' を出庫します\n残り: '+(p.stock-qty)+p.unit;cls='cy-shukko';
+  }else if(type==='henkyaku'){
+    title='↩️ 倉庫へ返却の確認';detail=p.name+'\n\n'+qty+p.unit+' を倉庫へ返却します\n倉庫在庫: '+(p.stock+qty)+p.unit;cls='cy-ret';
+  }else{
+    const real=parseInt(document.getElementById('tanaIn').value);
+    if(isNaN(real)||real<0){toast('数量を入力してください','ng');return}
+    const diff=real-p.stock;
+    title='棚卸しの確認';detail=p.name+'\n\nシステム: '+p.stock+p.unit+' → 実在庫: '+real+p.unit+'\n差異: '+(diff>=0?'+':'')+diff;cls='cy-tana';
+  }
+  if((type==='nyuko'||type==='shukko')&&qty>=10){title='⚠ '+title;detail='数量 '+qty+p.unit+' は多めです。\n間違いありませんか？\n\n'+detail}
+  document.getElementById('confirmTitle').textContent=title;
+  document.getElementById('confirmDetail').textContent=detail;
+  document.getElementById('confirmYes').className='confirm-yes '+cls;
+  pendingAction={type,qty};
+  document.getElementById('confirmOverlay').classList.add('on');
+  document.getElementById('confirmYes').onclick=()=>{closeConfirm();execAction(type)};
+}
+function closeConfirm(){document.getElementById('confirmOverlay').classList.remove('on')}
+
+// ─── 実行 ───
+let undoSnap=null,undoTimer=null,undoSec=600;
+function execAction(type){
+  if(!curBC)return;
+  const p=db.p[curBC];const qty=parseInt(document.getElementById('qVal').value)||1;
+  undoSnap={bc:curBC,stock:p.stock,expiry:p.expiry,logLen:db.logs.length};
+  const exp=document.getElementById('expInput').value;
+  if(type==='nyuko'){
+    p.stock+=qty;if(exp)p.expiry=exp;p.updated=now();
+    addLog(curBC,p.name,'入庫',qty,p.stock,p.unit,p.expiry||'');
+    save();showProduct(curBC,p);beep('ok');toast(('✓ 入庫 +' + qty + p.unit + ' → 残' + p.stock),'ok');
+  }else if(type==='shukko'){
+    p.stock-=qty;if(exp)p.expiry=exp;p.updated=now();
+    addLog(curBC,p.name,'出庫',qty,p.stock,p.unit,p.expiry||'');
+    save();showProduct(curBC,p);beep('ok');toast(('✓ 出庫 −' + qty + p.unit + ' → 残' + p.stock),'ok');
+  }else if(type==='henkyaku'){
+    p.stock+=qty;if(exp)p.expiry=exp;p.updated=now();
+    addLog(curBC,p.name,'倉庫へ返却',qty,p.stock,p.unit,p.expiry||'');
+    save();showProduct(curBC,p);beep('ok');toast(('✓ 倉庫へ返却 +' + qty + p.unit + ' → 倉庫在庫' + p.stock),'ok');
+  }else{
+    const real=parseInt(document.getElementById('tanaIn').value);const diff=real-p.stock;
+    if(exp)p.expiry=exp;p.stock=real;p.updated=now();
+    addLog(curBC,p.name,'棚卸し',diff,real,p.unit,p.expiry||'');
+    save();showProduct(curBC,p);closeTana();beep('ok');toast(('✓ 棚卸し → ' + real + p.unit + '（差異: ' + (diff>=0?'+':'') + diff + '）'),'ok');
+  }
+  startUndoTimer();
+}
+
+// ─── 取り消し ───
+function startUndoTimer(){
+  undoSec=600;document.getElementById('undoBar').classList.add('on');updUndo();
+  clearInterval(undoTimer);
+  undoTimer=setInterval(()=>{undoSec--;updUndo();if(undoSec<=0)closeUndo()},1000);
+}
+function updUndo(){document.getElementById('undoTimer').textContent=('あと' + Math.floor(undoSec/60) + '分' + (undoSec%60) + '秒以内')}
+function closeUndo(){clearInterval(undoTimer);undoTimer=null;document.getElementById('undoBar').classList.remove('on');undoSnap=null}
+function doUndo(){
+  if(!undoSnap)return;
+  const p=db.p[undoSnap.bc];p.stock=undoSnap.stock;p.expiry=undoSnap.expiry;p.updated=now();
+  db.logs=db.logs.slice(0,undoSnap.logLen);
+  addLog(undoSnap.bc,p.name,'取消',0,p.stock,p.unit,'');
+  save();closeUndo();showProduct(undoSnap.bc,p);beep('ng');toast('操作を取り消しました','ok');
+}
+
+// ─── 棚卸し ───
+function openTana(){if(!curBC)return;document.getElementById('tanaPanel').classList.add('on');document.getElementById('tanaIn').value=db.p[curBC].stock;document.getElementById('tanaIn').focus()}
+function closeTana(){document.getElementById('tanaPanel').classList.remove('on')}
+
+// ─── 在庫一覧 ───
+function renderStock(){
+  const el=document.getElementById('stockList'),items=Object.entries(db.p);
+  if(!items.length){el.innerHTML='<div class="empty"><div class="empty-icon">📦</div><div class="empty-text">商品を登録してください</div></div>';return}
+  items.sort((a,b)=>(a[1].expiry||'9999').localeCompare(b[1].expiry||'9999'));
+  el.innerHTML=items.map(([bc,p])=>{
+    const low=p.min&&p.stock<=p.min;
+    const expHtml=p.expiry?(()=>{const{label,cls}=expStatus(p.expiry);return '<div class="li-exp"><span class="badge '+cls+'">'+label+'</span></div>'})():'';
+    const isOver=p.expiry&&new Date(p.expiry)<new Date();
+    const isNear=p.expiry&&!isOver&&Math.ceil((new Date(p.expiry)-new Date())/864e5)<=7;
+    return '<div class="list-item'+((low||isOver||isNear)?' alert':'')+'" onclick="goScan(''+bc+'')">' +
+      '<div><div class="li-name">'+p.name+(isOver?' 🚨':isNear?' ⚠️':low?' ⚠️':'')+'</div><div class="li-code">'+bc+'</div>'+expHtml+'</div>' +
+      '<div><div class="li-num'+(low?' low':'')+'">'+p.stock+'</div><div class="li-unit">'+p.unit+'</div></div>' +
+      '</div>';
+  }).join('');
+}
+function goScan(bc){go('scan');document.getElementById('bcInput').value=bc;lookup(bc)}
+
+// ─── 履歴 ───
+function renderLog(){
+  const el=document.getElementById('logList'),logs=[...db.logs].reverse();
+  if(!logs.length){el.innerHTML='<div class="empty"><div class="empty-icon">🕐</div><div class="empty-text">履歴がありません</div></div>';return}
+  el.innerHTML=logs.slice(0,200).map(function(l){
+    return '<div class="log-item">'+
+      '<div class="log-top"><span class="log-badge '+l.action+'">'+l.action+'</span><span class="log-time">'+l.time+'</span></div>'+
+      '<div class="log-name">'+l.name+'</div>'+
+      '<div class="log-detail">数量: '+(l.qty>0?'+':'')+l.qty+l.unit+' | 操作後: '+l.after+l.unit+'</div>'+
+      (l.expiry?'<div class="log-detail">🗓 '+l.expiry+'</div>':'')+
+      '<div class="log-op">👤 '+l.operator+'</div>'+
+    '</div>';
+  }).join('');
